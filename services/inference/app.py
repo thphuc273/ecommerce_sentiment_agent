@@ -164,8 +164,23 @@ def analyze_sentiment(text: str) -> Dict[str, Any]:
         # Get sentiment predictions
         results = sentiment_pipeline(text)
         
-        # Get highest scoring sentiment
-        scores = results[0]  # First (and only) input's results
+        # Handle different return formats from the pipeline
+        if isinstance(results, list):
+            if isinstance(results[0], list):
+                # If results is a list of lists (newer transformers versions)
+                scores = results[0]  # First (and only) input's results
+            elif isinstance(results[0], dict):
+                # If results is a list of dictionaries
+                scores = results
+            else:
+                # Fallback for unexpected format
+                logger.error(f"Unexpected results format: {type(results[0])}")
+                return {"label": "neutral", "score": 0.5}
+        else:
+            # Fallback for completely unexpected format
+            logger.error(f"Unexpected results format: {type(results)}")
+            return {"label": "neutral", "score": 0.5}
+            
         highest_score = max(scores, key=lambda x: x["score"])
         
         # Map labels to human-readable sentiment
@@ -175,14 +190,31 @@ def analyze_sentiment(text: str) -> Dict[str, Any]:
             "LABEL_2": "positive"
         }
         
-        label = highest_score["label"]
+        label = highest_score.get("label", "")
         
-        # Use the existing ID2LABEL mapping if possible to convert numeric labels
-        if label.isdigit() and int(label) in ID2LABEL:
-            label = ID2LABEL[int(label)]
-        # Use the label mapping for LABEL_X format
-        elif label in label_map:
-            label = label_map[label]
+        # Handle different label formats
+        if isinstance(label, int) and label in ID2LABEL:
+            # Direct integer label
+            label = ID2LABEL[label]
+        elif isinstance(label, str):
+            # String label handling
+            if label.isdigit() and int(label) in ID2LABEL:
+                # Numeric string like "0", "1", "2"
+                label = ID2LABEL[int(label)]
+            elif label in label_map:
+                # Format like "LABEL_0", "LABEL_1"
+                label = label_map[label]
+            elif label.lower() in ["positive", "neutral", "negative"]:
+                # Already in the desired format
+                label = label.lower()
+            else:
+                # Unknown format
+                logger.warning(f"Unknown label format: {label}, defaulting to 'neutral'")
+                label = "neutral"
+        else:
+            # Completely unexpected type
+            logger.error(f"Unexpected label type: {type(label)}")
+            label = "neutral"
         
         return {
             "label": label,
@@ -214,9 +246,29 @@ def generate_summary(sentiment_result: Dict[str, Any], similar_reviews: List[Dic
     sentiment_counts = {"positive": 0, "neutral": 0, "negative": 0}
     for review in similar_reviews:
         sentiment = review.get("sentiment", "neutral")
+        
         # Map the sentiment if it's a label
-        if sentiment in label_map:
-            sentiment = label_map[sentiment]
+        if isinstance(sentiment, str):
+            if sentiment in label_map:
+                sentiment = label_map[sentiment]
+            elif sentiment.isdigit() and int(sentiment) in [0, 1, 2]:
+                # Map numeric strings: 0 -> negative, 1 -> neutral, 2 -> positive
+                sentiment = ["negative", "neutral", "positive"][int(sentiment)]
+            elif sentiment.lower() not in sentiment_counts:
+                # Default for unknown sentiments
+                logger.warning(f"Unknown sentiment value: {sentiment}, defaulting to 'neutral'")
+                sentiment = "neutral"
+            else:
+                # Normalize to lowercase
+                sentiment = sentiment.lower()
+        elif isinstance(sentiment, int) and 0 <= sentiment <= 2:
+            # Direct integer sentiment
+            sentiment = ["negative", "neutral", "positive"][sentiment]
+        else:
+            # Default for unexpected types
+            logger.warning(f"Unexpected sentiment type: {type(sentiment)}, defaulting to 'neutral'")
+            sentiment = "neutral"
+            
         sentiment_counts[sentiment] += 1
     
     # Determine most common sentiment
