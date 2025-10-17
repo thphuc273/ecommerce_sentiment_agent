@@ -112,7 +112,7 @@ class SimpleCallback(TrainerCallback):
         """
         Called at the end of a training step.
         """
-        global training_logs, training_metrics
+        # Access directly without global
         
         self.global_step += 1
         if self.global_step % 10 == 0:  # Log every 10 steps
@@ -139,7 +139,7 @@ class SimpleCallback(TrainerCallback):
         """
         Called after evaluation.
         """
-        global training_metrics
+        # Access directly without global
         
         if metrics:
             training_logs.append({
@@ -178,7 +178,7 @@ async def train_model():
     """
     Train a sentiment classification model.
     """
-    global training_logs, training_metrics
+    # Access variables directly without global
     
     try:
         # Update training status
@@ -312,15 +312,18 @@ async def train_endpoint(background_tasks: BackgroundTasks) -> Dict:
         Dict: Status message
     """
     # Reset training logs and metrics
-    global training_logs, training_metrics
-    training_logs = []
-    training_metrics = {
+    # Using nonlocal instead of global for these variables
+    # They should be defined at module level
+    training_logs.clear()  # Clear the list instead of reassigning
+    
+    # Reset metrics dictionary
+    training_metrics.update({
         "accuracy": 0.0,
         "f1": 0.0,
         "loss": 0.0,
         "epoch": 0,
         "status": "Starting"
-    }
+    })
     
     background_tasks.add_task(train_model)
     return JSONResponse(

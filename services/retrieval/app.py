@@ -116,7 +116,7 @@ async def encode_text(text: str) -> np.ndarray:
     Returns:
         Text embedding as numpy array
     """
-    global embeddings
+    # Access embeddings directly without global declaration
     try:
         # Process text using CLIP processor
         inputs = clip_processor(text=text, return_tensors="pt", padding=True)
