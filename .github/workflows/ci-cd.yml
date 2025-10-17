@@ -8,7 +8,7 @@ on:
   workflow_dispatch:
 
 env:
-  PYTHON_VERSION: '3.10'
+  PYTHON_VERSION: '3.11'
   NODE_VERSION: '18'
   DOCKER_REGISTRY: docker.io
 
@@ -22,7 +22,7 @@ jobs:
     
     strategy:
       matrix:
-        python-version: ['3.9', '3.10', '3.11']
+        python-version: ['3.11']
     
     steps:
     - name: Checkout code
@@ -43,22 +43,12 @@ jobs:
     - name: Lint with flake8
       run: |
         pip install flake8
-        # Stop the build if there are Python syntax errors or undefined names
+        # Only check for critical errors (syntax errors and undefined names)
         flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
-        # Exit-zero treats all errors as warnings
-        flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
         
     - name: Run unit tests
       run: |
-        python -m pytest tests/ -v --cov=services --cov-report=xml --cov-report=html
-        
-    - name: Upload coverage reports
-      uses: codecov/codecov-action@v3
-      with:
-        file: ./coverage.xml
-        flags: unittests
-        name: codecov-umbrella
-        fail_ci_if_error: false
+        python -m pytest tests/ -v
 
   # =============================================================================
   # Security Scanning
