@@ -133,21 +133,35 @@ print('Data handling test completed')
 "
 
 # Run the app in test mode (non-blocking)
-echo "Testing Gradio app launch..."
-timeout 30s python3 hf_space_app.py &
+echo "🚀 Testing Gradio app launch..."
+
+# Start the app in background with a timeout mechanism
+python3 hf_space_app.py &
 APP_PID=$!
 
+# Wait for app to start
 sleep 10
 
 # Check if the app is running
-if ps -p $APP_PID > /dev/null; then
+if ps -p $APP_PID > /dev/null 2>&1; then
     echo "Gradio app launched successfully"
-    kill $APP_PID
+    # Kill the app
+    kill $APP_PID 2>/dev/null || true
     wait $APP_PID 2>/dev/null || true
 else
     echo "Gradio app failed to launch"
     exit 1
 fi
+
+# Alternative timeout function for systems without timeout command
+kill_after_timeout() {
+    local pid=$1
+    local timeout_duration=$2
+    sleep $timeout_duration
+    if ps -p $pid > /dev/null 2>&1; then
+        kill $pid 2>/dev/null || true
+    fi
+}
 
 # Run unit tests if they exist
 if [ -d "tests" ]; then
@@ -197,7 +211,7 @@ print('README format is valid')
 deactivate
 
 echo ""
-echo "🎉 All tests passed! Your HF Spaces app is ready for deployment."
+echo "All tests passed! Your HF Spaces app is ready for deployment."
 echo ""
 echo "Summary:"
 echo "Dependencies installed successfully"
