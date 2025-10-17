@@ -5,7 +5,7 @@
 ![Docker](https://img.shields.io/badge/docker-ready-brightgreen)
 ![License](https://img.shields.io/badge/license-MIT-orange)
 
-## 🧠 Overview
+## Overview
 
 The E-commerce Sentiment Analysis System is an AI-powered platform that provides deep insights into customer sentiment from product reviews across multiple e-commerce platforms. By leveraging advanced natural language processing and computer vision techniques, the system analyzes both text and image data to extract sentiment, identify trends, and surface similar customer experiences.
 
@@ -17,7 +17,7 @@ Key features include:
 - Interactive web interface for exploring sentiment patterns
 - Scalable microservices architecture for production deployment
 
-## 🧩 System Architecture
+## System Architecture
 
 The system implements a modern, scalable microservices architecture with continuous integration and deployment capabilities. Each component is designed to be independently deployable, maintainable, and scalable.
 
@@ -97,7 +97,7 @@ The system implements a modern, scalable microservices architecture with continu
 - **Endpoints**:
   - `GET /health`: Service health check
   - `POST /train`: Start model training job
-  - `GET /status/{job_id}`: Check training status
+
 
 #### 4. Retrieval Service
 **Purpose**: Enables efficient semantic search across review embeddings
@@ -182,7 +182,7 @@ The system implements a modern, scalable microservices architecture with continu
 - Hugging Face Spaces for public demo
 - Docker Hub for container registry
 
-## 📊 Dataset Description
+## Dataset Description
 
 The system uses a carefully curated dataset of e-commerce product reviews to train and evaluate sentiment analysis models. This dataset serves as the foundation for the entire sentiment analysis pipeline.
 
@@ -237,7 +237,7 @@ The system uses a carefully curated dataset of e-commerce product reviews to tra
 - **Quality control**: Manual verification of a subset of sentiment labels
 - **Reproducibility**: Fixed random seeds used in train/validation/test splits
 
-## ⚙️ Tech Stack
+## Tech Stack
 
 ### Backend Technologies
 - **Python 3.11**: Core programming language
@@ -703,15 +703,10 @@ docker-compose -f docker-compose.prod.yml up
 ```
 
 
-## �📄 License
+##�📄 License
 
 This project is licensed under the MIT License - see the LICENSE file for details.
 
 ## 👥 Contributors
 
 - Phuc Nguyen
-## 🙏 Acknowledgements
-
-- HuggingFace for the transformer models
-- Facebook Research for FAISS
-- FastAPI for the web framework
