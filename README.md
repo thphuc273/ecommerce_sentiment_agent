@@ -359,14 +359,68 @@ Response:
 }
 ```
 
-## � CI/CD and Deployment
+## 🔐 Environment Configuration
+
+### Setting Up .env File
+
+This project uses environment variables for configuration. Follow these steps to set up your environment:
+
+1. **Create a .env file** at the project root:
+```bash
+# Create a .env file from template
+cp .env.example .env
+# OR run the setup script
+./scripts/setup_env.sh
+```
+
+2. **Configure essential variables** in your .env file:
+```bash
+# Hugging Face configuration
+HF_TOKEN=your_huggingface_token_here  # Get from https://huggingface.co/settings/tokens
+HF_USERNAME=your_username
+
+# Database configuration
+DATABASE_URL=postgres://postgres:postgres@localhost:5433/ecommerce_sentiment
+POSTGRES_PASSWORD=postgres
+
+# Service URLs for local development
+RETRIEVAL_SERVICE_URL=http://localhost:8004
+INFERENCE_SERVICE_URL=http://localhost:8005
+```
+
+3. **Validate your configuration**:
+```bash
+./scripts/validate_env.sh
+```
+
+### Getting Your Hugging Face Token
+
+1. Go to [https://huggingface.co/settings/tokens](https://huggingface.co/settings/tokens)
+2. Click "New token"
+3. Name: `ecommerce-sentiment-analysis`
+4. Role: `Write` (required for deployment)
+5. Copy the token to your .env file
+
+### Environment Variables Reference
+
+| Variable | Purpose | Default |
+|----------|---------|---------|
+| `HF_TOKEN` | Authentication for HF deployment | (required for deployment) |
+| `HF_USERNAME` | Your HF username | (required for deployment) |
+| `DATABASE_URL` | PostgreSQL connection string | postgres://postgres:postgres@localhost:5433/ecommerce_sentiment |
+| `RETRIEVAL_SERVICE_URL` | URL for retrieval service | http://localhost:8004 |
+| `INFERENCE_SERVICE_URL` | URL for inference service | http://localhost:8005 |
+| `MODEL_NAME` | Model for sentiment analysis | distilbert-base-uncased |
+| `LOG_LEVEL` | Logging verbosity | INFO |
+
+## 🚀 CI/CD and Deployment
 
 ### GitHub Actions Pipeline
 
 The project includes a comprehensive CI/CD pipeline that automatically:
 
 1. **Testing**: Runs unit tests, integration tests, and linting
-2. **Security**: Performs vulnerability scanning with Trivy
+2. **Security**: Performs vulnerability scanning with CodeQL and Trivy
 3. **Building**: Creates and pushes Docker images to Docker Hub
 4. **Deployment**: Automatically deploys to Hugging Face Spaces on main branch
 

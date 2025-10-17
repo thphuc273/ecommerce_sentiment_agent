@@ -106,3 +106,4 @@ hf_space_deployment/
 secrets.env
 .env.local
 .env.production
+.github/
