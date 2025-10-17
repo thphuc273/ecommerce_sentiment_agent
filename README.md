@@ -111,11 +111,8 @@ The system follows a microservices architecture pattern, with each component res
 ### MLOps & Deployment
 - **Docker**: Containerization
 - **Docker Compose**: Multi-container orchestration
-- **AWS Elastic Beanstalk**: PaaS for deployment
-- **AWS CodePipeline**: CI/CD pipeline
-- **AWS S3**: Artifact and model storage
-- **AWS CloudWatch**: Monitoring and logging
-
+- **Github Actions**: CI/CD pipeline for automated build, test, and deployment
+-- **Hugging Face Spaces**: Alternative lightweight deployment for public ML demos
 ### Development Tools
 - **Pytest**: Testing framework
 - **Jupyter Notebooks**: Research and evaluation
