@@ -315,8 +315,7 @@ ecommerce_sentiment_agent/
 ├── setup.sh                  # Main setup script
 └── tests/                    # Test suite
     ├── requirements.txt      # Test dependencies
-    ├── test_inference.py     # Inference service tests
-    └── test_integration.py   # End-to-end integration tests
+    └── test_inference.py     # Inference service tests
 ```
 
 ## 🚀 Setup Instructions
