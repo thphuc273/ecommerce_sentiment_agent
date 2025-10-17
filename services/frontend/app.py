@@ -57,42 +57,61 @@ def analyze_review(review_text: str, image: Optional[Any] = None) -> str:
             timeout=10
         )
         
+        logger.info(f"Response status: {response.status_code}")
+        
         # Check if request was successful
         if response.status_code == 200:
-            result = response.json()
+            try:
+                result = response.json()
+                logger.info(f"Received response: {result}")
+                
+                # Safely extract sentiment with fallback
+                sentiment_label = result.get('sentiment', 'neutral')
+                if sentiment_label in LABEL_MAP:
+                    human_sentiment = LABEL_MAP[sentiment_label].upper()
+                else:
+                    # If label is not in our map, use as is
+                    human_sentiment = str(sentiment_label).upper()
+            except Exception as e:
+                logger.error(f"Error parsing JSON response: {str(e)}")
+                return f"❌ Error: Failed to parse response from inference service"
             
-            # Convert model labels to human-readable format
-            sentiment_label = result['sentiment']
-            if sentiment_label in LABEL_MAP:
-                human_sentiment = LABEL_MAP[sentiment_label].upper()
-            else:
-                # If label is not in our map, use as is
-                human_sentiment = sentiment_label.upper()
-            
-            # Format the output
+            # Format the output with safe access
             output = f"### Sentiment Analysis Results\n\n"
             output += f"**Sentiment:** {human_sentiment}\n"
-            output += f"**Confidence:** {result['confidence']:.2f}\n\n"
-            output += f"**Summary:** {result['summary']}\n\n"
+            output += f"**Confidence:** {result.get('confidence', 0.0):.2f}\n\n"
+            output += f"**Summary:** {result.get('summary', 'No summary available')}\n\n"
             output += f"**Review Text:** {review_text}\n\n"
             
-            # Add similar reviews
+            # Add similar reviews with safe access
             output += "### Top Similar Reviews\n\n"
             
-            if not result['similar_reviews']:
+            similar_reviews = result.get('similar_reviews', [])
+            if not similar_reviews or len(similar_reviews) == 0:
                 output += "No similar reviews found.\n"
             else:
-                # Take only top 3 reviews
-                top_reviews = result['similar_reviews'][:3]
-                for i, review in enumerate(top_reviews, 1):
-                    # Convert the sentiment label if needed
-                    sentiment = review['sentiment']
-                    if sentiment in LABEL_MAP:
-                        sentiment = LABEL_MAP[sentiment]
-                    
-                    output += f"**Review {i}** ({sentiment.capitalize()})\n"
-                    output += f"Similarity Score: {review['similarity_score']:.2f}\n"
-                    output += f"Text: {review['review_text'][:200]}...\n\n"
+                try:
+                    # Take only top 3 reviews
+                    top_reviews = similar_reviews[:3] if isinstance(similar_reviews, list) else []
+                    for i, review in enumerate(top_reviews, 1):
+                        if not isinstance(review, dict):
+                            logger.warning(f"Review {i} is not a dict: {type(review)}")
+                            continue
+                            
+                        # Convert the sentiment label if needed with safe access
+                        sentiment = review.get('sentiment', 'neutral')
+                        if sentiment in LABEL_MAP:
+                            sentiment = LABEL_MAP[sentiment]
+                        
+                        similarity_score = review.get('similarity_score', 0.0)
+                        review_text_snippet = review.get('review_text', 'No text available')
+                        
+                        output += f"**Review {i}** ({str(sentiment).capitalize()})\n"
+                        output += f"Similarity Score: {similarity_score:.2f}\n"
+                        output += f"Text: {str(review_text_snippet)[:200]}...\n\n"
+                except Exception as e:
+                    logger.error(f"Error processing similar reviews: {str(e)}")
+                    output += f"Error displaying similar reviews: {str(e)}\n"
             
             return output + image_note
         else:

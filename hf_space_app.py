@@ -55,7 +55,7 @@ def initialize_models():
             "sentiment-analysis",
             model=model,
             tokenizer=tokenizer,
-            return_all_scores=True
+            top_k=None  # Use top_k=None instead of return_all_scores=True for newer transformers versions
         )
         
         logger.info("Sentiment analysis model loaded successfully")
@@ -100,8 +100,28 @@ def analyze_sentiment(text: str) -> Dict:
     try:
         results = sentiment_pipeline(text)
         
+        # Handle different pipeline output formats
+        logger.info(f"Pipeline results type: {type(results)}")
+        logger.info(f"Pipeline results: {results}")
+        
+        # Ensure results is a list and handle different formats
+        if isinstance(results, list) and len(results) > 0:
+            # If results is a nested list (multiple inputs), take the first
+            if isinstance(results[0], list):
+                scores = results[0]
+            else:
+                scores = results
+        else:
+            logger.error(f"Unexpected results format: {type(results)}")
+            return {"error": "Invalid pipeline output format"}
+        
+        # Validate that scores is a list of dictionaries
+        if not isinstance(scores, list) or not all(isinstance(item, dict) and 'score' in item for item in scores):
+            logger.error(f"Invalid scores format: {scores}")
+            return {"error": "Invalid scores format from pipeline"}
+        
         # Get the highest confidence score
-        best_result = max(results, key=lambda x: x['score'])
+        best_result = max(scores, key=lambda x: x.get('score', 0))
         
         # Map labels to human-readable format
         label_mapping = {
@@ -113,8 +133,10 @@ def analyze_sentiment(text: str) -> Dict:
             'positive': 'positive'
         }
         
-        sentiment = label_mapping.get(best_result['label'].lower(), best_result['label'])
-        confidence = best_result['score']
+        # Safely extract label and score
+        raw_label = best_result.get('label', 'neutral')
+        sentiment = label_mapping.get(str(raw_label).lower(), str(raw_label))
+        confidence = best_result.get('score', 0.5)
         
         return {
             "sentiment": sentiment,
@@ -208,7 +230,7 @@ This review expresses **{sentiment}** sentiment with {confidence:.1%} confidence
 def analyze_review(review_text: str, image=None) -> str:
     """Main function to analyze a review."""
     if not review_text or not review_text.strip():
-        return "❌ **Please enter some review text to analyze.**"
+        return "**Please enter some review text to analyze.**"
     
     try:
         # Analyze sentiment
@@ -222,7 +244,7 @@ def analyze_review(review_text: str, image=None) -> str:
         
     except Exception as e:
         logger.error(f"Error in analyze_review: {e}")
-        return f"❌ **Error**: Something went wrong during analysis. Please try again."
+        return f"**Error**: Something went wrong during analysis. Please try again."
 
 # Sample reviews for examples
 SAMPLE_REVIEWS = [
@@ -252,7 +274,7 @@ with gr.Blocks(
     css="footer {visibility: hidden}"
 ) as demo:
     
-    gr.Markdown("# 🛍️ E-commerce Sentiment Analysis")
+    gr.Markdown("# E-commerce Sentiment Analysis")
     gr.Markdown("""
     Analyze the sentiment of product reviews with AI-powered insights.
     Enter a review text and optionally upload a product image to get sentiment analysis
@@ -260,7 +282,7 @@ with gr.Blocks(
     """)
     
     if not initialization_success:
-        gr.Markdown("⚠️ **Warning**: Some models failed to load. Functionality may be limited.")
+        gr.Markdown("**Warning**: Some models failed to load. Functionality may be limited.")
     
     with gr.Row():
         with gr.Column(scale=1):
