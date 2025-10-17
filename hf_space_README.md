@@ -15,7 +15,7 @@ tags:
 - transformers
 - gradio
 - machine-learning
-short_description: AI-powered sentiment analysis for product reviews with similar review recommendations
+short_description: AI sentiment analysis for e-commerce product reviews
 ---
 
 # 🛍️ E-commerce Sentiment Analysis
