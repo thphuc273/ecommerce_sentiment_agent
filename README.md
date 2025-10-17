@@ -483,22 +483,6 @@ docker-compose up --scale inference=3 --scale retrieval=2
 docker-compose -f docker-compose.prod.yml up
 ```
 
-### Cloud Deployment Options
-
-#### AWS ECS/EKS
-- Use provided Docker images
-- Configure load balancers for each service
-- Set up RDS for PostgreSQL database
-
-#### Google Cloud Run
-- Deploy each service as a Cloud Run service
-- Use Cloud SQL for database
-- Configure service-to-service authentication
-
-#### Azure Container Instances
-- Deploy using Azure Container Groups
-- Use Azure Database for PostgreSQL
-- Set up Application Gateway for load balancing
 
 ## �📄 License
 

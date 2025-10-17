@@ -99,7 +99,7 @@ def deploy_to_hf():
                     except Exception as e:
                         print(f"Error uploading model file {file}: {str(e)}")
         
-        print(f"🎉 Successfully deployed to https://huggingface.co/spaces/{repo_id}")
+        print(f"Successfully deployed to https://huggingface.co/spaces/{repo_id}")
         return True
         
     except Exception as e:
