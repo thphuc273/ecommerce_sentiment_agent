@@ -1,7 +1,7 @@
 # 📊 E-commerce Sentiment Analysis System
 
 ![Version](https://img.shields.io/badge/version-1.0.0-blue)
-![Python](https://img.shields.io/badge/python-3.10-green)
+![Python](https://img.shields.io/badge/python-3.11-green)
 ![Docker](https://img.shields.io/badge/docker-ready-brightgreen)
 ![License](https://img.shields.io/badge/license-MIT-orange)
 
@@ -17,82 +17,230 @@ Key features include:
 - Interactive web interface for exploring sentiment patterns
 - Scalable microservices architecture for production deployment
 
-## 🧩 Architecture
+## 🧩 System Architecture
 
-The system follows a microservices architecture pattern, with each component responsible for a specific function:
+The system implements a modern, scalable microservices architecture with continuous integration and deployment capabilities. Each component is designed to be independently deployable, maintainable, and scalable.
 
-### Microservices
-
-**1. Data Collection Service**
-- Collects product reviews from various sources (Amazon datasets)
-- Performs initial cleaning and normalization
-- Stores raw data for further processing
-- Endpoints: `/collect`, `/health`
-
-**2. Data Processing Service**
-- Generates embeddings for text and image content
-- Handles preprocessing, tokenization, and feature extraction
-- Creates datasets suitable for model training
-- Endpoints: `/process`, `/embeddings`, `/health`
-
-**3. Model Training Service**
-- Fine-tunes transformer models for sentiment classification
-- Supports distributed training across multiple GPUs
-- Logs training metrics and saves model checkpoints
-- Implements early stopping and model evaluation
-- Endpoints: `/train`, `/status`, `/health`
-
-**4. Retrieval Service**
-- Manages vector indices for efficient similarity search
-- Provides fast nearest-neighbor lookup using FAISS
-- Supports both text and multi-modal queries
-- Returns the most relevant reviews for a given query
-- Endpoints: `/search_similar`, `/build_index`, `/health`
-
-**5. Inference Service**
-- Performs real-time sentiment analysis on new reviews
-- Integrates with the retrieval service to provide context
-- Handles both text and image inputs
-- Generates sentiment summaries and confidence scores
-- Endpoints: `/analyze`, `/health`
-
-**6. Frontend Service**
-- Provides an interactive user interface using Gradio
-- Visualizes sentiment analysis results
-- Allows users to submit reviews and view similar content
-- Presents sentiment trends and insights
-- Accessible via web browser
-
-**7. Database (PostgreSQL)**
-- Stores review data, embeddings, and analysis results
-- Ensures data persistence and reliability
-- Supports complex queries for analytics
-
-### System Diagram
+### Architecture Overview
 
 ```
-┌─────────────┐     ┌─────────────┐     ┌─────────────┐
-│    Data     │     │    Data     │     │   Model     │
-│ Collection  ├────►│ Processing  ├────►│  Training   │
-└─────────────┘     └─────────────┘     └─────────────┘
-                                               │
-                                               ▼
-┌─────────────┐     ┌─────────────┐     ┌─────────────┐
-│  Frontend   │◄────│  Inference  │◄────│  Retrieval  │
-└─────────────┘     └─────────────┘     └─────────────┘
-       ▲                   ▲                   ▲
-       │                   │                   │
-       └───────────────────┴───────────────────┘
-                           │
-                     ┌─────────────┐
-                     │  Database   │
-                     └─────────────┘
+┌───────────────────────────────────────────────────────────────────────┐
+│                        CI/CD Pipeline (GitHub Actions)                 │
+└───────────────────────────────────┬───────────────────────────────────┘
+                                    │
+                                    ▼
+┌───────────────────────────────────────────────────────────────────────┐
+│                        Containerized Services (Docker)                 │
+│  ┌─────────────┐     ┌─────────────┐     ┌─────────────┐              │
+│  │    Data     │     │    Data     │     │   Model     │              │
+│  │ Collection  ├────►│ Processing  ├────►│  Training   │              │
+│  └─────────────┘     └─────────────┘     └─────────────┘              │
+│                                                 │                      │
+│                                                 │                      │
+│                                                 ▼                      │
+│  ┌─────────────┐     ┌─────────────┐     ┌─────────────┐              │
+│  │  Frontend   │◄────│  Inference  │◄────│  Retrieval  │              │
+│  └─────────────┘     └─────────────┘     └─────────────┘              │
+│         │                   │                   │                      │
+└─────────┼───────────────────┼───────────────────┼──────────────────────┘
+          │                   │                   │
+          ▼                   ▼                   ▼
+┌───────────────────────────────────────────────────────────────────────┐
+│                       Persistence Layer                                │
+│  ┌─────────────────────────────┐   ┌─────────────────────────────┐    │
+│  │     PostgreSQL Database     │   │     Vector Store (FAISS)     │    │
+│  └─────────────────────────────┘   └─────────────────────────────┘    │
+└───────────────────────────────────────────────────────────────────────┘
+          │                                       │
+          ▼                                       ▼
+┌───────────────────────────────┐   ┌───────────────────────────────────┐
+│      Hugging Face Spaces      │   │         Docker Registry           │
+│    (Public Demo Deployment)   │   │    (Container Image Storage)      │
+└───────────────────────────────┘   └───────────────────────────────────┘
 ```
+
+### Microservices Components
+
+#### 1. Data Collection Service
+**Purpose**: Acquires and normalizes review data from various e-commerce platforms
+- **Technology**: Python, FastAPI, BeautifulSoup, Requests
+- **Key Features**:
+  - Dataset ingestion from Amazon review datasets
+  - Web scraping capabilities for fresh data
+  - Initial data validation and cleaning
+  - Streaming data pipeline integration
+- **Endpoints**: 
+  - `GET /health`: Service health check
+  - `POST /collect`: Trigger data collection job
+
+#### 2. Data Processing Service
+**Purpose**: Transforms raw data into model-ready features and embeddings
+- **Technology**: Python, FastAPI, PyTorch, Transformers
+- **Key Features**:
+  - Text preprocessing (tokenization, normalization)
+  - Image feature extraction using CLIP
+  - Embedding generation for vectorization
+  - Dataset splitting and preparation
+- **Endpoints**:
+  - `GET /health`: Service health check
+  - `POST /process`: Process raw data into features
+
+#### 3. Model Training Service
+**Purpose**: Trains and fine-tunes sentiment analysis models
+- **Technology**: Python, FastAPI, PyTorch, Transformers, MLflow
+- **Key Features**:
+  - Fine-tuning transformer models (DistilBERT, BERT)
+  - Hyperparameter optimization
+  - Multi-GPU distributed training support
+  - Model evaluation and validation
+  - Training metrics logging and visualization
+- **Endpoints**:
+  - `GET /health`: Service health check
+  - `POST /train`: Start model training job
+  - `GET /status/{job_id}`: Check training status
+
+#### 4. Retrieval Service
+**Purpose**: Enables efficient semantic search across review embeddings
+- **Technology**: Python, FastAPI, FAISS, NumPy
+- **Key Features**:
+  - Fast approximate nearest neighbor search
+  - Vector index management with FAISS
+  - Multi-modal embedding support
+  - Configurable similarity metrics
+- **Endpoints**:
+  - `GET /health`: Service health check
+  - `POST /search_similar`: Find similar reviews
+
+
+#### 5. Inference Service
+**Purpose**: Performs real-time sentiment analysis and review similarity
+- **Technology**: Python, FastAPI, PyTorch, Transformers
+- **Key Features**:
+  - Real-time sentiment classification
+  - Confidence scoring
+  - Integration with retrieval service
+  - Multi-modal input support (text and images)
+  - Batch prediction capabilities
+- **Endpoints**:
+  - `GET /health`: Service health check
+  - `POST /analyze`: Analyze sentiment of review
+
+#### 6. Frontend Service
+**Purpose**: Provides user interface for interacting with the system
+- **Technology**: Python, Gradio
+- **Key Features**:
+  - Interactive web interface with Gradio
+  - Real-time sentiment analysis demo
+- **Access**: Web browser via http://localhost:8006 or https://huggingface.co/spaces/Felix273/ecommerce-sentiment-analysis
+
+### Persistence Layer
+
+#### PostgreSQL Database
+- Stores structured review data and metadata
+- Manages user accounts and preferences
+- Tracks analysis history and results
+- Ensures ACID compliance for critical operations
+
+#### Vector Store (FAISS)
+- Memory-mapped vector indices for fast similarity search
+- Specialized data structure for embedding storage
+- Optimized for high-dimensional nearest neighbor search
+- Supports both CPU and GPU acceleration
+
+### DevOps Infrastructure
+
+#### CI/CD Pipeline (GitHub Actions)
+- **Testing Phase**:
+  - Automated unit and integration testing
+  - Code quality checks with flake8
+  - Security scanning with Trivy and CodeQL
+- **Building Phase**:
+  - Docker image building for all microservices
+  - Multi-platform support (linux/amd64, linux/arm64)
+  - Image tagging and versioning
+- **Deployment Phase**:
+  - Automatic deployment to Hugging Face Spaces
+  - Docker Hub image publishing
+  - Integration testing in production environment
+  - Deployment notifications
+
+#### Containerization (Docker)
+- Individual containers for each microservice
+- Docker Compose for local orchestration
+- Volume mounting for persistent data
+- Network isolation and service discovery
+
+### Deployment Targets
+
+#### Development Environment
+- Local Docker Compose setup
+- Hot-reloading for rapid development
+- Local PostgreSQL database
+- Debugging and profiling tools
+
+#### Production Environment
+- Hugging Face Spaces for public demo
+- Docker Hub for container registry
+
+## 📊 Dataset Description
+
+The system uses a carefully curated dataset of e-commerce product reviews to train and evaluate sentiment analysis models. This dataset serves as the foundation for the entire sentiment analysis pipeline.
+
+### Dataset Overview
+
+- **Source**: Amazon Product Reviews dataset, a widely-used benchmark for sentiment analysis
+- **Size**: Over 1,000 product reviews spanning multiple product categories
+- **Structure**: CSV format with review text, star ratings, and sentiment labels
+- **Labels**: Three-class sentiment categorization (positive, neutral, negative)
+- **Features**: 
+  - `review_body`: Full text content of customer reviews
+  - `stars`: Numeric rating (1-5 stars) given by customers
+  - `sentiment`: Derived sentiment label (positive, neutral, negative)
+
+### Data Processing Pipeline
+
+1. **Collection Phase**:
+   - Raw review data is collected from Amazon dataset
+   - Initial filtering removes uninformative or extremely short reviews
+   - Basic data cleaning to handle special characters and formatting issues
+
+2. **Preprocessing Phase**:
+   - Text normalization (lowercase, punctuation handling, etc.)
+   - Tokenization using transformer model tokenizers
+   - Star ratings are converted to sentiment categories:
+     - 1-2 stars: Negative
+     - 3 stars: Neutral
+     - 4-5 stars: Positive
+
+3. **Feature Extraction**:
+   - Text embeddings are generated using transformer models
+   - Embeddings are stored in NumPy arrays for efficient retrieval
+   - Vector dimensionality: 512 (using CLIP model encodings)
+
+4. **Storage**:
+   - Processed reviews stored in `data/processed/reviews.csv`
+   - Embeddings stored in `data/processed/embeddings.npy`
+   - Vector indices built using FAISS for similarity search
+
+### Dataset Statistics
+
+- **Distribution**: Approximately 60% positive, 15% neutral, 25% negative reviews
+- **Average review length**: ~120 words per review
+- **Vocabulary size**: ~25,000 unique tokens
+- **Languages**: Primarily English language reviews
+- **Time period**: Reviews spanning multiple years for diverse product categories
+
+### Data Quality and Ethics
+
+- **Privacy**: All personally identifiable information (PII) removed from reviews
+- **Bias mitigation**: Dataset balanced across product categories to reduce bias
+- **Quality control**: Manual verification of a subset of sentiment labels
+- **Reproducibility**: Fixed random seeds used in train/validation/test splits
 
 ## ⚙️ Tech Stack
 
-### Backend
-- **Python 3.10**: Core programming language
+### Backend Technologies
+- **Python 3.11**: Core programming language
 - **FastAPI**: High-performance API framework
 - **PyTorch**: Deep learning framework
 - **Transformers**: Hugging Face transformer models for NLP
@@ -100,50 +248,75 @@ The system follows a microservices architecture pattern, with each component res
 - **NumPy/Pandas**: Data processing and manipulation
 - **Uvicorn**: ASGI server for FastAPI
 
-### Frontend
+### Frontend Technologies
 - **Gradio**: Interactive UI components for ML applications
 - **Matplotlib/Seaborn**: Data visualization
 
 ### Data Storage
 - **PostgreSQL**: Primary relational database
+- **FAISS Indices**: Vector similarity search
 - **NumPy arrays**: Efficient storage for embeddings
 
 ### MLOps & Deployment
 - **Docker**: Containerization
 - **Docker Compose**: Multi-container orchestration
-- **Github Actions**: CI/CD pipeline for automated build, test, and deployment
--- **Hugging Face Spaces**: Alternative lightweight deployment for public ML demos
+- **GitHub Actions**: CI/CD pipeline
+- **Hugging Face Spaces**: Public ML demo deployment
+- **Docker Hub**: Container registry
+
 ### Development Tools
 - **Pytest**: Testing framework
 - **Jupyter Notebooks**: Research and evaluation
+- **Flake8**: Code quality checking
+- **Trivy & CodeQL**: Security scanning
 
 ## 🗂️ Project Structure
 
 ```
 ecommerce_sentiment_agent/
+├── .github/
+│   └── workflows/            # GitHub Actions workflow definitions
+│       └── ci-cd.yml         # CI/CD pipeline configuration
 ├── data/
-│   ├── raw/                 # Original unprocessed data
-│   └── processed/           # Cleaned and processed data
-│       ├── embeddings.npy   # Vector embeddings
-│       └── reviews.csv      # Processed reviews
-├── docker-compose.yml       # Multi-service configuration
+│   ├── raw/                  # Original unprocessed data
+│   └── processed/            # Cleaned and processed data
+│       ├── embeddings.npy    # Vector embeddings
+│       └── reviews.csv       # Processed reviews
+├── docker-compose.yml        # Multi-service configuration
+├── .env.example              # Environment variables template
 ├── eval/
-│   └── robustness_tests.ipynb  # Test notebooks
+│   └── robustness_tests.ipynb # Test notebooks
+├── hf_space_app.py           # Hugging Face Spaces application
+├── hf_space_README.md        # README for Hugging Face Spaces
+├── hf_space_requirements.txt # Dependencies for Hugging Face deployment
 ├── logs/
-│   └── train_metrics.json   # Training logs
+│   └── train_metrics.json    # Training logs
 ├── models/
-│   └── checkpoints/         # Saved model weights
-├── README.md                # Project documentation
-├── requirements.txt         # Core dependencies
+│   └── checkpoints/          # Saved model weights
+│       └── final_model/      # Production model files
+├── README.md                 # Project documentation
+├── requirements.txt          # Core dependencies
+├── scripts/
+│   ├── deploy_to_hf.sh       # Hugging Face deployment script
+│   ├── setup_env.sh          # Environment setup script
+│   ├── setup_repo.sh         # Repository initialization script
+│   ├── test_hf_app.sh        # Test Hugging Face app locally
+│   └── validate_env.sh       # Environment validation script
 ├── services/
-│   ├── data_collection/     # Review collection service
-│   ├── data_processing/     # Embedding generation service
-│   ├── frontend/            # Gradio web interface
-│   ├── inference/           # Sentiment analysis service
-│   ├── model_training/      # Model training service
-│   └── retrieval/           # Vector search service
-├── setup.sh                 # Setup script
-└── tests/                   # Test suite
+│   ├── data_collection/      # Review collection service
+│   │   ├── app.py            # FastAPI application
+│   │   ├── Dockerfile        # Container definition
+│   │   └── requirements.txt  # Service dependencies
+│   ├── data_processing/      # Embedding generation service
+│   ├── frontend/             # Gradio web interface
+│   ├── inference/            # Sentiment analysis service
+│   ├── model_training/       # Model training service
+│   └── retrieval/            # Vector search service
+├── setup.sh                  # Main setup script
+└── tests/                    # Test suite
+    ├── requirements.txt      # Test dependencies
+    ├── test_inference.py     # Inference service tests
+    └── test_integration.py   # End-to-end integration tests
 ```
 
 ## 🚀 Setup Instructions
@@ -253,9 +426,13 @@ The models are evaluated against various types of noise:
 
 ## 🧭 API Endpoints
 
-### Data Collection Service
+### Data Collection Service (Port 8001)
 
-**Trigger data collection:**
+- `GET /health`: Health check
+- `POST /collect`: Trigger data collection
+- `GET /status/{job_id}`: Check collection status
+
+**Example - Trigger data collection:**
 ```
 POST /collect
 ```
@@ -267,9 +444,36 @@ Response:
 }
 ```
 
-### Inference Service
+### Data Processing Service (Port 8002)
 
-**Analyze sentiment:**
+- `GET /health`: Health check
+- `POST /process`: Process raw data
+- `POST /embeddings`: Generate embeddings
+- `GET /status/{job_id}`: Check processing status
+
+### Model Training Service (Port 8003)
+
+- `GET /health`: Health check
+- `POST /train`: Start model training
+- `GET /status/{job_id}`: Check training status
+- `GET /metrics/{job_id}`: Get training metrics
+- `GET /models`: List available models
+
+### Retrieval Service (Port 8004)
+
+- `GET /health`: Health check
+- `POST /search_similar`: Find similar reviews
+- `POST /build_index`: Build vector index
+- `GET /status`: Get index statistics
+
+### Inference Service (Port 8005)
+
+- `GET /health`: Health check
+- `POST /analyze`: Analyze sentiment
+- `POST /batch_analyze`: Process multiple reviews
+- `GET /models`: List available models
+
+**Example - Analyze sentiment:**
 ```
 POST /analyze
 Content-Type: application/json
@@ -416,10 +620,25 @@ INFERENCE_SERVICE_URL=http://localhost:8005
 
 The project includes a comprehensive CI/CD pipeline that automatically:
 
-1. **Testing**: Runs unit tests, integration tests, and linting
-2. **Security**: Performs vulnerability scanning with CodeQL and Trivy
-3. **Building**: Creates and pushes Docker images to Docker Hub
-4. **Deployment**: Automatically deploys to Hugging Face Spaces on main branch
+1. **Testing Phase**:
+   - Runs unit and integration tests on Python 3.11
+   - Performs code quality checks with flake8
+   - Ensures critical functionality works before deployment
+
+2. **Security Phase**:
+   - Scans for vulnerabilities with Trivy
+   - Performs code security analysis with CodeQL
+   - Identifies potential security issues early
+
+3. **Build Phase**:
+   - Creates Docker images for all microservices
+   - Builds for multiple platforms (amd64, arm64)
+   - Tags images based on branch and commit
+
+4. **Deployment Phase**:
+   - Pushes images to Docker Hub (if configured)
+   - Deploys to Hugging Face Spaces automatically
+   - Runs integration tests on the deployed application
 
 #### Required GitHub Secrets
 

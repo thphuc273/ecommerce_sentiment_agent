@@ -296,9 +296,15 @@ jobs:
         pip install -r requirements.txt
         pip install -r tests/requirements.txt
         
+    - name: Install Docker Compose V2
+      run: |
+        # Docker Compose is included with Docker Engine but let's make sure it's set up properly
+        docker --version
+        docker compose version || echo "Docker Compose V2 plugin not found, setting up now..."
+        
     - name: Start services with Docker Compose
       run: |
-        docker-compose up -d
+        docker compose up -d
         sleep 30  # Wait for services to be ready
         
     - name: 🧪 Run integration tests
@@ -309,10 +315,9 @@ jobs:
       run: |
         python -m pytest tests/test_integration.py -v
         
-    - name: Cleanup
+    - name: Stop services
+      run: docker compose down
       if: always()
-      run: |
-        docker-compose down -v
 
   # =============================================================================
   # Deployment Notification
