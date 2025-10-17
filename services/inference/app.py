@@ -164,26 +164,53 @@ def analyze_sentiment(text: str) -> Dict[str, Any]:
         # Get sentiment predictions
         results = sentiment_pipeline(text)
         
+        # Debug logging to understand the structure
+        logger.info(f"Pipeline results type: {type(results)}")
+        logger.info(f"Pipeline results: {results}")
+        
         # Handle different return formats from the pipeline
-        if isinstance(results, list):
+        if isinstance(results, list) and len(results) > 0:
+            logger.info(f"First result type: {type(results[0])}")
             if isinstance(results[0], list):
                 # If results is a list of lists (newer transformers versions)
                 scores = results[0]  # First (and only) input's results
+                logger.info(f"Using nested list format, scores: {scores}")
             elif isinstance(results[0], dict):
                 # If results is a list of dictionaries
                 scores = results
+                logger.info(f"Using list of dicts format, scores: {scores}")
             else:
                 # Fallback for unexpected format
-                logger.error(f"Unexpected results format: {type(results[0])}")
+                logger.error(f"Unexpected results[0] format: {type(results[0])}, value: {results[0]}")
                 return {"label": "neutral", "score": 0.5}
+        elif isinstance(results, list) and len(results) == 0:
+            logger.error("Pipeline returned empty list")
+            return {"label": "neutral", "score": 0.5}
         else:
             # Fallback for completely unexpected format
-            logger.error(f"Unexpected results format: {type(results)}")
+            logger.error(f"Unexpected results format: {type(results)}, value: {results}")
             return {"label": "neutral", "score": 0.5}
             
-        highest_score = max(scores, key=lambda x: x["score"])
+        # Validate scores format before processing
+        if not scores or not isinstance(scores, list):
+            logger.error(f"Invalid scores format: {scores}")
+            return {"label": "neutral", "score": 0.5}
+            
+        # Validate each score item
+        for i, score in enumerate(scores):
+            if not isinstance(score, dict):
+                logger.error(f"Score item {i} is not a dict: {type(score)}, value: {score}")
+                return {"label": "neutral", "score": 0.5}
+            if "score" not in score:
+                logger.error(f"Score item {i} missing 'score' key: {score}")
+                return {"label": "neutral", "score": 0.5}
+                
+        highest_score = max(scores, key=lambda x: x.get("score", 0) if isinstance(x, dict) else 0)
         
-        # Map labels to human-readable sentiment
+        # Ensure highest_score is a dictionary
+        if not isinstance(highest_score, dict):
+            logger.error(f"Expected dict for highest_score, got {type(highest_score)}")
+            return {"label": "neutral", "score": 0.5}
         label_map = {
             "LABEL_0": "negative",
             "LABEL_1": "neutral", 
@@ -218,7 +245,7 @@ def analyze_sentiment(text: str) -> Dict[str, Any]:
         
         return {
             "label": label,
-            "score": highest_score["score"]
+            "score": highest_score.get("score", 0.5)
         }
     except Exception as e:
         logger.error(f"Error analyzing sentiment: {str(e)}")
