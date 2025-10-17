@@ -1,0 +1,184 @@
+name: CI/CD Pipeline for HuggingFace Spaces
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+
+env:
+  PYTHON_VERSION: '3.10'
+  HF_SPACE_NAME: 'ecommerce-sentiment-analysis'
+  
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ env.PYTHON_VERSION }}
+        
+    - name: Cache pip dependencies
+      uses: actions/cache@v3
+      with:
+        path: ~/.cache/pip
+        key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
+        restore-keys: |
+          ${{ runner.os }}-pip-
+          
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install pytest pytest-cov flake8
+        
+    - name: Lint with flake8
+      run: |
+        # Stop the build if there are Python syntax errors or undefined names
+        flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
+        # Exit-zero treats all errors as warnings. The GitHub editor is 127 chars wide
+        flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
+        
+    - name: Run tests
+      run: |
+        python -m pytest tests/ -v --cov=services/ --cov-report=xml
+        
+    - name: Upload coverage to Codecov
+      uses: codecov/codecov-action@v3
+      with:
+        file: ./coverage.xml
+        flags: unittests
+        name: codecov-umbrella
+
+  build-and-deploy:
+    needs: test
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
+    
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        lfs: true
+        
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ env.PYTHON_VERSION }}
+        
+    - name: Install Hugging Face Hub
+      run: |
+        pip install huggingface_hub
+        
+    - name: Prepare Hugging Face Space files
+      run: |
+        # Create the space directory structure
+        mkdir -p hf_space
+        
+        # Copy necessary files to the space directory
+        cp hf_space_app.py hf_space/app.py
+        cp hf_space_requirements.txt hf_space/requirements.txt
+        cp hf_space_README.md hf_space/README.md
+        
+        # Copy model files if they exist
+        if [ -d "models/checkpoints/final_model" ]; then
+          cp -r models/checkpoints/final_model hf_space/
+        fi
+        
+        # Copy data files needed for inference
+        if [ -d "data/processed" ]; then
+          mkdir -p hf_space/data/processed
+          cp data/processed/embeddings.npy hf_space/data/processed/ || echo "No embeddings file found"
+          cp data/processed/reviews.csv hf_space/data/processed/ || echo "No reviews file found"
+        fi
+        
+    - name: Upload to Hugging Face Spaces
+      env:
+        HF_TOKEN: ${{ secrets.HF_TOKEN }}
+      run: |
+        cd hf_space
+        
+        # Login to Hugging Face
+        python -c "
+        from huggingface_hub import HfApi, login
+        import os
+        
+        # Login using token
+        login(token=os.environ['HF_TOKEN'])
+        
+        # Create or update the space
+        api = HfApi()
+        
+        try:
+            # Try to create the space (will fail if it already exists)
+            api.create_repo(
+                repo_id='${{ secrets.HF_USERNAME }}/${{ env.HF_SPACE_NAME }}',
+                repo_type='space',
+                space_sdk='gradio',
+                private=False
+            )
+            print('Created new Hugging Face Space')
+        except Exception as e:
+            print(f'Space already exists or creation failed: {e}')
+        
+        # Upload files to the space
+        api.upload_folder(
+            folder_path='.',
+            repo_id='${{ secrets.HF_USERNAME }}/${{ env.HF_SPACE_NAME }}',
+            repo_type='space',
+            commit_message='Deploy from GitHub Actions'
+        )
+        print('Successfully deployed to Hugging Face Spaces')
+        "
+
+  docker-build:
+    needs: test
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+      
+    - name: Log in to Docker Hub
+      uses: docker/login-action@v3
+      with:
+        username: ${{ secrets.DOCKER_USERNAME }}
+        password: ${{ secrets.DOCKER_PASSWORD }}
+        
+    - name: Build and push Docker images
+      run: |
+        services=("data_collection" "data_processing" "model_training" "inference" "retrieval" "frontend")
+        
+        for service in "${services[@]}"; do
+          echo "Building $service..."
+          docker build -t ${{ secrets.DOCKER_USERNAME }}/ecommerce-sentiment-$service:latest ./services/$service/
+          docker push ${{ secrets.DOCKER_USERNAME }}/ecommerce-sentiment-$service:latest
+          docker tag ${{ secrets.DOCKER_USERNAME }}/ecommerce-sentiment-$service:latest ${{ secrets.DOCKER_USERNAME }}/ecommerce-sentiment-$service:${{ github.sha }}
+          docker push ${{ secrets.DOCKER_USERNAME }}/ecommerce-sentiment-$service:${{ github.sha }}
+        done
+
+  security-scan:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Run Trivy vulnerability scanner
+      uses: aquasecurity/trivy-action@master
+      with:
+        scan-type: 'fs'
+        scan-ref: '.'
+        format: 'sarif'
+        output: 'trivy-results.sarif'
+        
+    - name: Upload Trivy scan results to GitHub Security tab
+      uses: github/codeql-action/upload-sarif@v2
+      if: always()
+      with:
+        sarif_file: 'trivy-results.sarif'

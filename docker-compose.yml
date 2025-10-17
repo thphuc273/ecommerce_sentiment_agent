@@ -1,0 +1,157 @@
+version: '3.8'
+
+networks:
+  ecommerce_net:
+    driver: bridge
+
+volumes:
+  postgres_data:
+
+services:
+  postgres:
+    image: postgres:14
+    container_name: ecommerce_postgres
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./data:/app/data
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=ecommerce_sentiment
+    ports:
+      - "5433:5432"
+    networks:
+      - ecommerce_net
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    restart: unless-stopped
+
+  data_collection:
+    build:
+      context: ./services/data_collection
+      dockerfile: Dockerfile
+    container_name: ecommerce_data_collection
+    volumes:
+      - ./data:/app/data
+      - ./models:/app/models
+    environment:
+      - DATABASE_URL=postgres://postgres:postgres@postgres:5432/ecommerce_sentiment
+      - LOG_LEVEL=INFO
+    networks:
+      - ecommerce_net
+    depends_on:
+      postgres:
+        condition: service_healthy
+    ports:
+      - "9001:8000"
+    restart: unless-stopped
+
+  data_processing:
+    build:
+      context: ./services/data_processing
+      dockerfile: Dockerfile
+    container_name: ecommerce_data_processing
+    volumes:
+      - ./data:/app/data
+      - ./models:/app/models
+    environment:
+      - DATABASE_URL=postgres://postgres:postgres@postgres:5432/ecommerce_sentiment
+      - LOG_LEVEL=INFO
+    networks:
+      - ecommerce_net
+    depends_on:
+      - data_collection
+      - postgres
+    ports:
+      - "8002:8000"
+    restart: unless-stopped
+
+  model_training:
+    build:
+      context: ./services/model_training
+      dockerfile: Dockerfile
+    container_name: ecommerce_model_training
+    volumes:
+      - ./data:/app/data
+      - ./models:/app/models
+    environment:
+      - DATABASE_URL=postgres://postgres:postgres@postgres:5432/ecommerce_sentiment
+      - LOG_LEVEL=INFO
+    networks:
+      - ecommerce_net
+    depends_on:
+      - data_processing
+    ports:
+      - "8003:8000"
+    restart: unless-stopped
+    # GPU acceleration disabled - uncomment if you have NVIDIA Container Toolkit installed
+    # deploy:
+    #   resources:
+    #     reservations:
+    #       devices:
+    #         - driver: nvidia
+    #           count: 1
+    #           capabilities: [gpu]
+
+  retrieval:
+    build:
+      context: ./services/retrieval
+      dockerfile: Dockerfile
+    container_name: ecommerce_retrieval
+    volumes:
+      - ./data:/app/data
+      - ./models:/app/models
+    environment:
+      - DATABASE_URL=postgres://postgres:postgres@postgres:5432/ecommerce_sentiment
+      - LOG_LEVEL=INFO
+    networks:
+      - ecommerce_net
+    depends_on:
+      - data_processing
+    ports:
+      - "8004:8000"
+    restart: unless-stopped
+
+  inference:
+    build:
+      context: ./services/inference
+      dockerfile: Dockerfile
+    container_name: ecommerce_inference
+    volumes:
+      - ./data:/app/data
+      - ./models:/app/models
+    environment:
+      - DATABASE_URL=postgres://postgres:postgres@postgres:5432/ecommerce_sentiment
+      - RETRIEVAL_SERVICE_URL=http://retrieval:8000
+      - LOG_LEVEL=INFO
+    networks:
+      - ecommerce_net
+    depends_on:
+      - retrieval
+      - model_training
+    ports:
+      - "8005:8000"
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: ./services/frontend
+      dockerfile: Dockerfile
+    container_name: ecommerce_frontend
+    volumes:
+      - ./data:/app/data
+      - ./models:/app/models
+    environment:
+      - INFERENCE_SERVICE_URL=http://inference:8000
+      - LOG_LEVEL=INFO
+    networks:
+      - ecommerce_net
+    depends_on:
+      - inference
+    ports:
+      - "8006:8000"
+    restart: unless-stopped
